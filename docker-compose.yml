@@ -1,0 +1,9 @@
+services:
+  spark-dev:
+    build: .
+    container_name: spark_project_env
+    volumes:
+      - .:/app
+      - ./data:/data
+    stdin_open: true
+    tty: true
