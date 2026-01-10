@@ -2,6 +2,27 @@
 
 A production-ready Apache Spark application that efficiently stores daily snapshots of the French National Address Database (Base Adresse Nationale) using incremental change detection and Parquet storage format.
 
+## Table of Contents
+
+- [Problem & Solution](#problem--solution)
+- [Tech Stack](#tech-stack)
+- [Project Structure](#project-structure)
+- [Getting Started](#getting-started)
+  - [Prerequisites](#prerequisites)
+  - [Compilation](#compilation)
+  - [Docker Setup](#docker-setup)
+- [Usage](#usage)
+  - [1. Daily File Integration](#1-daily-file-integration)
+  - [2. Daily Report](#2-daily-report)
+  - [3. Recompute Dump at Date](#3-recompute-dump-at-date)
+  - [4. Compute Diff Between Files](#4-compute-diff-between-files)
+- [Testing](#testing)
+  - [Integration Test Suite](#integration-test-suite)
+  - [Expected Data Structure](#expected-data-structure)
+- [Professor Integration Test](#professor-integration-test)
+- [Implementation Details](#implementation-details)
+- [Limitations & Future Improvements](#limitations--future-improvements)
+
 ## Problem & Solution
 
 ### The Challenge
@@ -138,11 +159,6 @@ Integrates a CSV file for a specific date, computing and storing incremental cha
 ./scripts/run_daily_file_integration.sh <date> <csvFile>
 ```
 
-**Example:**
-```bash
-./scripts/run_daily_file_integration.sh 2025-01-15 /data/addresses-2025-01-15.csv
-```
-
 **What it does:**
 - Reads the CSV file with semicolon delimiter
 - Computes SHA-256 hash for each record
@@ -169,11 +185,6 @@ Generates aggregate statistics on the latest address data.
 **Script:** `run_report.sh`
 
 **Syntax:**
-```bash
-./scripts/run_report.sh
-```
-
-**Example:**
 ```bash
 ./scripts/run_report.sh
 ```
@@ -214,11 +225,6 @@ Reconstructs the complete address database as it existed on a specific historica
 ./scripts/recompute_and_extract_dump_at_date.sh <date> <outputDir>
 ```
 
-**Example:**
-```bash
-./scripts/recompute_and_extract_dump_at_date.sh 2025-01-10 /output/snapshot-2025-01-10
-```
-
 **What it does:**
 - Reads all incremental changes up to the target date from `bal_diff`
 - Applies changes chronologically
@@ -246,11 +252,6 @@ Compares two Parquet datasets and identifies differences.
 **Syntax:**
 ```bash
 ./scripts/compute_diff_between_files.sh <parquetDir1> <parquetDir2>
-```
-
-**Example:**
-```bash
-./scripts/compute_diff_between_files.sh /output/snapshot-2025-01-01 /output/snapshot-2025-01-15
 ```
 
 **What it does:**
@@ -424,6 +425,58 @@ bal.db/
 └── diff_output/                   # Comparison results
 ```
 
+## Professor Integration Test
+
+To run the complete integration test with 50 daily dumps (2025-01-01 to 2025-02-20):
+
+**Prerequisites:** Place the 50 CSV dump files in `c:/data/` as:
+```
+c:/data/dump-2025-01-01
+c:/data/dump-2025-01-02
+...
+c:/data/dump-2025-02-20
+```
+
+**Execution:**
+
+```bash
+#!/bin/bash
+
+# Compile and clean
+mvn clean install
+rm -rf bal.db
+
+# Process 50 days
+for n in $(seq 1 50); do 
+    day=$(date -d "2025-01-01 +${n} day" +%Y-%m-%d)
+    echo "Processing day ${n}: ${day}"
+    ./scripts/run_daily_file_integration.sh ${day} c:/data/dump-${day}
+    ./scripts/run_report.sh
+done
+
+# Recompute and compare
+./scripts/recompute_and_extract_dump_at_date.sh 2025-01-24 c:/temp/dumpA
+./scripts/recompute_and_extract_dump_at_date.sh 2025-02-10 c:/temp/dumpB
+./scripts/compute_diff_between_files.sh c:/temp/dumpA c:/temp/dumpB
+```
+
+**Expected Result:**
+
+```
+bal.db/
+├── bal_latest/              # Final snapshot (2025-02-20)
+├── bal_diff/                # 50 daily partitions
+│   ├── day=2025-01-02/
+│   ├── day=2025-01-03/
+│   ...
+│   └── day=2025-02-20/
+└── diff_output/             # Comparison results
+
+c:/temp/
+├── dumpA/                   # Recomputed at 2025-01-24
+└── dumpB/                   # Recomputed at 2025-02-10
+```
+
 ## Implementation Details
 
 ### Change Detection with SHA-256 Hashing
@@ -470,64 +523,5 @@ Benefits:
 - Compares new data with `bal_latest`
 - Detects INSERT (new keys), DELETE (missing keys), UPDATE (same key, different hash)
 - Stores only the differences
-
-### Performance Optimizations
-
-1. **Cache frequently accessed datasets:**
-   ```java
-   currentData.cache();
-   previousData.cache();
-   ```
-
-2. **Coalesce to single file per partition:**
-   ```java
-   dataset.coalesce(1).write()...
-   ```
-   Reduces small file overhead for incremental data.
-
-3. **Efficient joins with broadcast hints** (for larger datasets):
-   Could use `broadcast()` on smaller datasets for join optimization.
-
-4. **Column pruning:**
-   Only select necessary columns when possible to reduce memory footprint.
-
-## Limitations & Future Improvements
-
-### Current Limitations
-
-- **Small file problem**: Daily incremental files are small; consider compaction strategies for production
-- **No schema evolution handling**: Column additions/removals may break hash consistency
-- **Local execution only**: Configured for `local[*]` mode
-- **Manual scheduling**: No built-in scheduler for daily automation
-
-### Potential Improvements
-
-1. **Production Deployment:**
-   - Deploy on a Spark cluster (YARN, Kubernetes, Databricks)
-   - Add scheduling with Apache Airflow or cron
-   - Implement monitoring and alerting
-
-2. **Performance Enhancements:**
-   - Implement periodic compaction of small files
-   - Add incremental statistics collection
-   - Use Delta Lake or Apache Iceberg for ACID transactions and time travel
-
-3. **Data Quality:**
-   - Add data validation and quality checks
-   - Implement anomaly detection (sudden spike in changes)
-   - Schema evolution strategies
-
-4. **Operational Features:**
-   - Add logging with structured format (JSON logs)
-   - Implement retry logic and error handling
-   - Add metrics collection (Prometheus/Grafana)
-   - Backup and disaster recovery procedures
-
-5. **Scalability:**
-   - Optimize for larger datasets (billions of records)
-   - Implement adaptive query execution
-   - Consider columnar caching strategies
-
----
 
 **Data Source:** [French National Address Database (BAL)](https://adresse.data.gouv.fr/data/ban/adresses/latest/csv-bal/adresses-france.csv.gz)
