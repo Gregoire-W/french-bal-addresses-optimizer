@@ -249,7 +249,7 @@ The `test.sh` script validates all four features with sample data:
 
 ### Test Execution Demo
 
-![Test Execution](path/to/your/test-execution.gif)
+![Test Execution](public/demo.gif)
 
 *The GIF above shows the complete test execution in real-time. Below you'll find a detailed step-by-step breakdown with outputs and analysis for better readability.*
 
