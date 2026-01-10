@@ -165,17 +165,6 @@ Integrates a CSV file for a specific date, computing and storing incremental cha
 - Stores differences in `bal.db/bal_diff/day=<date>/`
 - Updates `bal.db/bal_latest/` with the new snapshot
 
-**Output:**
-```
-=== Integration Job ===
-Date: 2025-01-15
-CSV File: /data/addresses-2025-01-15.csv
-Insertions: 1523
-Deletions: 47
-Updates: 892
-=== Integration Job Completed Successfully ===
-```
-
 ### 2. Daily Report
 
 Generates aggregate statistics on the latest address data.
@@ -230,17 +219,6 @@ Reconstructs the complete address database as it existed on a specific historica
 - Excludes DELETEd addresses
 - Outputs the reconstructed snapshot to the specified directory
 
-**Output:**
-```
-=== Recompute Job ===
-Target date: 2025-01-10
-Output directory: /output/snapshot-2025-01-10
-Total diffs to process: 15234
-Final address count at 2025-01-10: 243567
-Dump saved to: /output/snapshot-2025-01-10
-=== Recompute Job Completed Successfully ===
-```
-
 ### 4. Compute Diff Between Files
 
 Compares two Parquet datasets and identifies differences.
@@ -259,17 +237,6 @@ Compares two Parquet datasets and identifies differences.
 - Identifies DELETE operations (in dataset1 but not dataset2)
 - Identifies UPDATE operations (same key but different hash)
 
-**Output:**
-```
-=== Diff Job ===
-Parquet Dir 1: /output/snapshot-2025-01-01
-Parquet Dir 2: /output/snapshot-2025-01-15
-Insertions: 1523
-Deletions: 47
-Updates: 892
-=== Diff Job Completed Successfully ===
-```
-
 ## Testing
 
 ### Integration Test Suite
@@ -279,6 +246,12 @@ The `test.sh` script validates all four features with sample data:
 ```bash
 ./scripts/test.sh
 ```
+
+### Test Execution Demo
+
+![Test Execution](path/to/your/test-execution.gif)
+
+*The GIF above shows the complete test execution in real-time. Below you'll find a detailed step-by-step breakdown with outputs and analysis for better readability.*
 
 ### Test Data Overview
 
@@ -310,13 +283,33 @@ We run the three daily integrations to process the CSV files and store increment
 
 **Output:**
 ```bash
-[Output to be filled]
+=============== Integration Job ==============
+Date: 2025-01-01
+CSV File: data/adresses-mini-step1.csv
+Insertions: 10
+Deletions: 0
+Updates: 0
+=== Integration Job Completed Successfully ===
+=============== Integration Job ==============
+Date: 2025-01-02
+CSV File: data/adresses-mini-step2.csv
+Insertions: 1
+Deletions: 2
+Updates: 2
+=== Integration Job Completed Successfully ===
+=============== Integration Job ==============
+Date: 2025-01-03
+CSV File: data/adresses-mini-step3.csv
+Insertions: 2
+Deletions: 0
+Updates: 1
+=== Integration Job Completed Successfully ===
 ```
 
 **Analysis:**
-- **Day 1 (2025-01-01)**: First run, all 10 addresses are INSERTed
-- **Day 2 (2025-01-02)**: Detects 2 DELETEs, 2 UPDATEs, and 1 INSERT → confirms the changes in step2.csv
-- **Day 3 (2025-01-03)**: Detects 2 INSERTs (re-added addresses) and 1 UPDATE → confirms the changes in step3.csv
+- **Day 1 (2025-01-01)**: First run, all 10 addresses are INSERTED    
+- **Day 2 (2025-01-02)**: Detects 2 DELETES, 2 UPDATES, and 1 INSERT → confirms the changes in step2.csv
+- **Day 3 (2025-01-03)**: Detects 2 INSERTS (re-added addresses) and 1 UPDATE → confirms the changes in step3.csv
 
 The output numbers match exactly the description of each CSV file's modifications.
 
@@ -331,7 +324,30 @@ We generate a statistical report on the latest data (as of day 3).
 
 **Output:**
 ```bash
-[Output to be filled]
+=============== BAL Report Job ===============
+
+=== Global Statistics ===
+Total addresses: 11
+Total communes: 9
+
+=== Top 10 Departments ===
++-----------+---------+--------+
+|departement|addresses|communes|
++-----------+---------+--------+
+|01         |5        |4       |
+|03         |3        |2       |
+|02         |3        |3       |
++-----------+---------+--------+
+
+
+=== Department Summary ===
++-----------+-------------+-------------+-------------+
+|departments|avg_addresses|min_addresses|max_addresses|
++-----------+-------------+-------------+-------------+
+|3          |4            |3            |5            |
++-----------+-------------+-------------+-------------+
+
+======= Report Completed Successfully ========
 ```
 
 **Analysis:**
@@ -355,7 +371,58 @@ We reconstruct the database state at each of the three dates to verify time-trav
 
 **Output:**
 ```bash
-[Output to be filled]
+==== Recompute Job Completed Successfully ====
+Target date: 2025-01-01
+Output directory: bal.db/recompute_2025-01-01
+Total diffs to process: 10
+
+Operations breakdown:
++---------+-----+
+|operation|count|
++---------+-----+
+|INSERT   |10   |
++---------+-----+
+
+
+Final address count at 2025-01-01: 10
+Dump saved to: bal.db/recompute_2025-01-01
+=============== Recompute Job ================
+==== Recompute Job Completed Successfully ====
+Target date: 2025-01-02
+Output directory: bal.db/recompute_2025-01-02
+Total diffs to process: 15
+
+Operations breakdown:
++---------+-----+
+|operation|count|
++---------+-----+
+|DELETE   |2    |
+|INSERT   |11   |
+|UPDATE   |2    |
++---------+-----+
+
+
+Final address count at 2025-01-02: 9
+Dump saved to: bal.db/recompute_2025-01-02
+=============== Recompute Job ================
+==== Recompute Job Completed Successfully ====
+Target date: 2025-01-03
+Output directory: bal.db/recompute_2025-01-03
+Total diffs to process: 18
+
+Operations breakdown:
++---------+-----+
+|operation|count|
++---------+-----+
+|DELETE   |2    |
+|INSERT   |13   |
+|UPDATE   |3    |
++---------+-----+
+
+
+Final address count at 2025-01-03: 11
+Dump saved to: bal.db/recompute_2025-01-03
+=============== Recompute Job ================
 ```
 
 **Analysis:**
@@ -378,13 +445,33 @@ We compare the recomputed snapshots to verify that differences are correctly ide
 
 **Output:**
 ```bash
-[Output to be filled]
+================= Diff Job ===================
+Parquet Dir 1: bal.db/recompute_2025-01-01
+Parquet Dir 2: bal.db/recompute_2025-01-02
+Insertions: 1
+Deletions: 2
+Updates: 2
+====== Diff Job Completed Successfully =======
+================= Diff Job ===================
+Parquet Dir 1: bal.db/recompute_2025-01-01
+Parquet Dir 2: bal.db/recompute_2025-01-03
+Insertions: 1
+Deletions: 0
+Updates: 3
+====== Diff Job Completed Successfully =======
+================= Diff Job ===================
+Parquet Dir 1: bal.db/recompute_2025-01-02
+Parquet Dir 2: bal.db/recompute_2025-01-03
+Insertions: 2
+Deletions: 0
+Updates: 1
+====== Diff Job Completed Successfully =======
 ```
 
 **Analysis:**
-- **Day1 → Day2**: Shows 1 INSERT, 2 DELETEs, 2 UPDATEs (matches step2 operations)
+- **Day1 → Day2**: Shows 1 INSERT, 2 DELETES, 2 UPDATES (matches step2 operations)
 - **Day1 → Day3**: Shows cumulative differences across both days
-- **Day2 → Day3**: Shows 2 INSERTs and 1 UPDATE (matches step3 operations)
+- **Day2 → Day3**: Shows 2 INSERTS and 1 UPDATE (matches step3 operations)
 
 The diff operations accurately retrace all the modifications described in our CSV files.
 
@@ -405,7 +492,7 @@ bal.db/
 │       └── part-00000-*.parquet   # 2 INSERTs, 1 UPDATE
 ├── recompute_2025-01-01/          # Reconstructed snapshot (10 addresses)
 ├── recompute_2025-01-02/          # Reconstructed snapshot (9 addresses)
-├── recompute_2025-01-03/          # Reconstructed snapshot (11 addresses)
+└── recompute_2025-01-03/          # Reconstructed snapshot (11 addresses)
 ```
 
 ## Professor Integration Test
@@ -505,5 +592,15 @@ Benefits:
 - Compares new data with `bal_latest`
 - Detects INSERT (new keys), DELETE (missing keys), UPDATE (same key, different hash)
 - Stores only the differences
+
+### Handling Duplicate Keys
+
+The source CSV files contain duplicates on the unique key (`cle_interop`) where only position columns (coordinates) vary slightly. To handle this:
+
+```java
+dataset.dropDuplicates("cle_interop");
+```
+
+This deduplication step keeps the first occurrence of each `cle_interop`, ensuring data integrity and preventing false positives in change detection. Without this, minor position variations would be incorrectly flagged as updates.
 
 **Data Source:** [French National Address Database (BAL)](https://adresse.data.gouv.fr/data/ban/adresses/latest/csv-bal/adresses-france.csv.gz)
