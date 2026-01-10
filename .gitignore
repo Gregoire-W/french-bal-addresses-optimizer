@@ -30,7 +30,6 @@ derby.log
 # Données du projet
 bal.db/
 *.parquet
-*.csv
 *.gz
 
 # IDE
