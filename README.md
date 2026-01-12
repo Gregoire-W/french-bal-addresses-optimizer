@@ -182,25 +182,6 @@ Generates aggregate statistics on the latest address data.
 - Aggregates statistics by department (département)
 - Displays top 10 departments by address count
 
-**Sample Output:**
-```
-=== BAL Report Job ===
-
-=== Global Statistics ===
-Total addresses: 245789
-Total communes: 1847
-
-=== Top 10 Departments ===
-+------------+----------+---------+
-|departement |addresses |communes |
-+------------+----------+---------+
-|75          |89234     |20       |
-|69          |45678     |293      |
-|13          |42156     |119      |
-...
-+------------+----------+---------+
-```
-
 ### 3. Recompute Dump at Date
 
 Reconstructs the complete address database as it existed on a specific historical date.
