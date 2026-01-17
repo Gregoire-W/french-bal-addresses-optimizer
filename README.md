@@ -19,7 +19,6 @@ A production-ready Apache Spark application that efficiently stores daily snapsh
 - [Testing](#testing)
   - [Integration Test Suite](#integration-test-suite)
   - [Expected Data Structure](#expected-data-structure)
-- [Professor Integration Test](#professor-integration-test)
 - [Implementation Details](#implementation-details)
 
 ## Problem & Solution
@@ -474,57 +473,6 @@ bal.db/
 ├── recompute_2025-01-01/          # Reconstructed snapshot (10 addresses)
 ├── recompute_2025-01-02/          # Reconstructed snapshot (9 addresses)
 └── recompute_2025-01-03/          # Reconstructed snapshot (11 addresses)
-```
-
-## Professor Integration Test
-
-To run the complete integration test with 50 daily dumps (2025-01-01 to 2025-02-20):
-
-**Prerequisites:** Place the 50 CSV dump files in `c:/data/` as:
-```
-c:/data/dump-2025-01-01
-c:/data/dump-2025-01-02
-...
-c:/data/dump-2025-02-20
-```
-
-**Execution:**
-
-```bash
-#!/bin/bash
-
-# Compile and clean
-mvn clean install
-rm -rf bal.db
-
-# Process 50 days
-for n in $(seq 1 50); do 
-    day=$(date -d "2025-01-01 +${n} day" +%Y-%m-%d)
-    echo "Processing day ${n}: ${day}"
-    ./scripts/run_daily_file_integration.sh ${day} c:/data/dump-${day}
-    ./scripts/run_report.sh
-done
-
-# Recompute and compare
-./scripts/recompute_and_extract_dump_at_date.sh 2025-01-24 c:/temp/dumpA
-./scripts/recompute_and_extract_dump_at_date.sh 2025-02-10 c:/temp/dumpB
-./scripts/compute_diff_between_files.sh c:/temp/dumpA c:/temp/dumpB
-```
-
-**Expected Result:**
-
-```
-bal.db/
-├── bal_latest/              # Final snapshot (2025-02-20)
-├── bal_diff/                # 50 daily partitions
-│   ├── day=2025-01-02/
-│   ├── day=2025-01-03/
-│   ...
-│   └── day=2025-02-20/
-
-c:/temp/
-├── dumpA/                   # Recomputed at 2025-01-24
-└── dumpB/                   # Recomputed at 2025-02-10
 ```
 
 ## Implementation Details
